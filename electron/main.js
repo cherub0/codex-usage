@@ -13,9 +13,9 @@ let monitorTimer = null;
 function createFloatingWindow() {
   const window = new BrowserWindow({
     width: 360,
-    height: 520,
+    height: 620,
     minWidth: 320,
-    minHeight: 460,
+    minHeight: 560,
     resizable: false,
     frame: false,
     transparent: true,
@@ -32,6 +32,28 @@ function createFloatingWindow() {
   });
 
   window.setAlwaysOnTop(true, 'screen-saver');
+  window.webContents.on('did-finish-load', async () => {
+    if (process.env.CODEX_USAGE_DEBUG_LOAD === '1') {
+      const text = await window.webContents.executeJavaScript('new Promise((resolve) => setTimeout(() => resolve(document.body.innerText), 1500))');
+      console.log(`Loaded ${window.webContents.getURL()}`);
+      console.log(text);
+    }
+    if (process.env.CODEX_USAGE_CAPTURE_PATH) {
+      setTimeout(async () => {
+        const image = await window.webContents.capturePage();
+        require('node:fs').writeFileSync(process.env.CODEX_USAGE_CAPTURE_PATH, image.toPNG());
+        console.log(`Captured ${process.env.CODEX_USAGE_CAPTURE_PATH}`);
+      }, 1800);
+    }
+  });
+  window.webContents.on('console-message', (_event, level, message) => {
+    if (process.env.CODEX_USAGE_DEBUG_LOAD === '1') {
+      console.log(`renderer[${level}]: ${message}`);
+    }
+  });
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`Failed to load ${validatedURL}: ${errorCode} ${errorDescription}`);
+  });
   window.loadFile(path.join(__dirname, '..', 'public', 'index.html'));
   return window;
 }
