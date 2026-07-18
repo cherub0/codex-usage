@@ -18,7 +18,7 @@ function normalizeStatus(value) {
   if (['queued', 'pending', 'waiting'].includes(text)) return '等待中';
   if (['done', 'complete', 'completed', 'archived'].includes(text)) return '已完成';
   if (text === 'idle') return '空闲';
-  return '推断中';
+  return '状态未知';
 }
 
 function normalizeUpdatedAt(value) {
@@ -56,16 +56,10 @@ function normalizeTaskRow(row = {}) {
   const completed = hasCompletionMarker(row);
   const status = completed ? '已完成' : normalizeStatus(row.status || row.state);
   let progressPercent = explicitProgress;
-  const confidence = explicitProgress !== null ? '真实' : '推断';
+  const confidence = explicitProgress !== null ? '真实' : '状态';
 
   if (progressPercent === null && completed) {
     progressPercent = 100;
-  } else if (progressPercent === null && status === '运行中') {
-    progressPercent = 35;
-  } else if (progressPercent === null && status === '等待中') {
-    progressPercent = 15;
-  } else if (progressPercent === null) {
-    progressPercent = 5;
   }
 
   return {
@@ -74,7 +68,7 @@ function normalizeTaskRow(row = {}) {
     progressPercent,
     confidence,
     updatedAt: normalizeUpdatedAt(row.updated_at || row.updatedAt || row.last_active_at),
-    message: confidence === '真实' ? '读取到明确任务进度' : '根据本机任务元数据推断'
+    message: confidence === '真实' ? '读取到明确任务进度' : '读取到本机任务状态'
   };
 }
 

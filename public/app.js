@@ -48,9 +48,9 @@ async function loadSnapshot() {
     usage,
     task: {
       title: '浏览器预览模式',
-      status: '推断中',
-      progressPercent: 5,
-      confidence: '推断',
+      status: '状态读取',
+      progressPercent: null,
+      confidence: '状态',
       updatedAt: null,
       message: 'Electron 模式会读取本机任务状态'
     },
@@ -112,19 +112,26 @@ function renderTokens(usage) {
 }
 
 function renderTask(task) {
-  const progress = Math.max(0, Math.min(100, Number(task.progressPercent || 0)));
+  const rawProgress = task.progressPercent;
+  const hasRealProgress = rawProgress !== null
+    && rawProgress !== undefined
+    && rawProgress !== ''
+    && Number.isFinite(Number(rawProgress));
+  const progress = hasRealProgress ? Math.max(0, Math.min(100, Number(rawProgress))) : null;
+  const progressText = hasRealProgress ? formatPercent(progress) : '';
+  const progressClass = hasRealProgress ? 'task-progress' : 'task-progress is-hidden';
   elements.task.innerHTML = `
     <div class="section-head">
       <h2>当前任务</h2>
-      <span>${task.confidence || '暂无'}</span>
+      <span>${hasRealProgress ? task.confidence || '真实' : '状态'}</span>
     </div>
     <div class="task-title">${task.title || '暂无任务数据'}</div>
     <div class="task-row">
       <span>${task.status || '暂无'}</span>
-      <strong>${formatPercent(progress)}</strong>
+      <strong>${progressText}</strong>
     </div>
-    <div class="progress-track">
-      <div class="progress-fill" style="width:${progress}%"></div>
+    <div class="progress-track ${progressClass}">
+      <div class="progress-fill" style="width:${progress || 0}%"></div>
     </div>
     <p class="task-message">${task.message || '等待本机 Codex 状态更新'}</p>
   `;

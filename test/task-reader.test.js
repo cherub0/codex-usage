@@ -28,7 +28,7 @@ test('normalizeTaskRow uses explicit progress and status when available', () => 
   assert.equal(task.confidence, '真实');
 });
 
-test('normalizeTaskRow infers progress from archived marker', () => {
+test('normalizeTaskRow reports completion from archived marker', () => {
   const task = normalizeTaskRow({
     name: '整理 README',
     archived: 1,
@@ -38,17 +38,18 @@ test('normalizeTaskRow infers progress from archived marker', () => {
   assert.equal(task.title, '整理 README');
   assert.equal(task.status, '已完成');
   assert.equal(task.progressPercent, 100);
-  assert.equal(task.confidence, '推断');
+  assert.equal(task.confidence, '状态');
 });
 
-test('normalizeTaskRow returns safe fallback title without transcript content', () => {
+test('normalizeTaskRow returns status-only task without guessed progress', () => {
   const task = normalizeTaskRow({
     prompt: 'secret prompt should not appear',
     updated_at: '2026-07-18T09:00:00.000Z'
   });
 
   assert.equal(task.title, '最近 Codex 任务');
-  assert.equal(task.confidence, '推断');
+  assert.equal(task.progressPercent, null);
+  assert.equal(task.confidence, '状态');
   assert.equal(task.title.includes('secret'), false);
 });
 
@@ -79,8 +80,8 @@ test('readCurrentTask falls back to the latest safe session index entry', async 
 
   assert.equal(task.title, '修正用量数据');
   assert.equal(task.status, '运行中');
-  assert.equal(task.progressPercent, 35);
-  assert.equal(task.confidence, '推断');
+  assert.equal(task.progressPercent, null);
+  assert.equal(task.confidence, '状态');
 });
 
 test('readCurrentTask prefers session index entries from the current project', async () => {
