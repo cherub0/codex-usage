@@ -39,6 +39,20 @@ The floating window is frameless, always on top, and styled like a compact macOS
 
 The normal app mode uses local Windows process inspection. If a Codex process is detected, the window is shown. If Codex is not detected, the Electron process stays alive in the background and the window is hidden until Codex appears again.
 
+## Start With Windows
+
+```powershell
+npm run autostart:install
+```
+
+This creates a current-user Startup shortcut. It starts the monitor after Windows login; the floating window still appears only when Codex is running.
+
+Remove it with:
+
+```powershell
+npm run autostart:uninstall
+```
+
 ## Configuration
 
 - `PORT`: server port, default `8787`

@@ -9,6 +9,8 @@
     "start": "node server.js",
     "app": "electron .",
     "app:dev": "cross-env CODEX_USAGE_FORCE_SHOW=1 electron .",
+    "autostart:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart.ps1",
+    "autostart:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-autostart.ps1",
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
