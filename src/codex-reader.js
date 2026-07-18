@@ -60,18 +60,20 @@ function numberFrom(raw, keys) {
 function tokenTotalsFrom(tokenCount) {
   const input = numberFrom(tokenCount, ['input_tokens', 'input']);
   const cachedInput = numberFrom(tokenCount, ['cached_input_tokens', 'cachedInput']);
+  const cacheWriteInput = numberFrom(tokenCount, ['cache_write_input_tokens', 'cacheWriteInput']);
   const output = numberFrom(tokenCount, ['output_tokens', 'output']);
+  const reasoningOutput = numberFrom(tokenCount, ['reasoning_output_tokens', 'reasoningOutput']);
   const total = numberFrom(tokenCount, ['total_tokens', 'total']) || input + output;
-  return { input, cachedInput, output, total };
+  return { input, cachedInput, cacheWriteInput, output, reasoningOutput, total };
 }
 
 function safeSnapshotFromRecord(record) {
-  const tokenCount = record?.token_count;
+  const tokenCount = record?.token_count || record?.payload?.info?.total_token_usage;
   if (!tokenCount || typeof tokenCount !== 'object') return null;
 
   return {
     timestamp: record.timestamp || record.created_at || record.time || null,
-    rate_limits: tokenCount.rate_limits || tokenCount.rateLimits || null,
+    rate_limits: tokenCount.rate_limits || tokenCount.rateLimits || record?.payload?.rate_limits || null,
     token_totals: tokenTotalsFrom(tokenCount)
   };
 }

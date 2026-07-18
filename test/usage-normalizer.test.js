@@ -43,6 +43,16 @@ test('normalizeWindow converts remaining percentage into used percentage', () =>
   assert.equal(result.resetAt, '2026-07-21T02:00:00.000Z');
 });
 
+test('normalizeWindow converts numeric resets_at epoch seconds to ISO time', () => {
+  const result = normalizeWindow({
+    id: 'primary',
+    used_percent: 7,
+    resets_at: 1784973986
+  }, '5h');
+
+  assert.equal(result.resetAt, new Date(1784973986 * 1000).toISOString());
+});
+
 test('normalizeUsageSnapshot returns live response for recognizable windows', () => {
   const result = normalizeUsageSnapshot({
     rate_limits: [

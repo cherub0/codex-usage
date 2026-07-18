@@ -3,8 +3,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { execFile } = require('node:child_process');
 
-const SAFE_TITLE_KEYS = ['title', 'name', 'summary', 'workspace'];
-const SENSITIVE_KEYS = new Set(['prompt', 'message', 'response', 'diff', 'command', 'output']);
+const SAFE_TITLE_KEYS = ['title', 'thread_name', 'display_title', 'name', 'summary', 'workspace'];
+const SENSITIVE_KEYS = new Set(['prompt', 'message', 'response', 'diff', 'command', 'output', 'first_user_message']);
 
 function clampProgress(value) {
   const number = Number(value);
@@ -21,10 +21,18 @@ function normalizeStatus(value) {
   return '推断中';
 }
 
+function normalizeUpdatedAt(value) {
+  if (typeof value === 'string' && value.trim()) return value;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  const milliseconds = number > 100000000000 ? number : number * 1000;
+  return new Date(milliseconds).toISOString();
+}
+
 function safeTitleFrom(row) {
   for (const key of SAFE_TITLE_KEYS) {
     const value = row?.[key];
-    if (typeof value === 'string' && value.trim()) {
+    if (typeof value === 'string' && value.trim() && !value.includes('\uFFFD')) {
       return value.trim().slice(0, 80);
     }
   }
@@ -48,7 +56,7 @@ function normalizeTaskRow(row = {}) {
   const completed = hasCompletionMarker(row);
   const status = completed ? '已完成' : normalizeStatus(row.status || row.state);
   let progressPercent = explicitProgress;
-  let confidence = explicitProgress !== null ? '真实' : '推断';
+  const confidence = explicitProgress !== null ? '真实' : '推断';
 
   if (progressPercent === null && completed) {
     progressPercent = 100;
@@ -65,7 +73,7 @@ function normalizeTaskRow(row = {}) {
     status,
     progressPercent,
     confidence,
-    updatedAt: row.updated_at || row.updatedAt || row.last_active_at || null,
+    updatedAt: normalizeUpdatedAt(row.updated_at || row.updatedAt || row.last_active_at),
     message: confidence === '真实' ? '读取到明确任务进度' : '根据本机任务元数据推断'
   };
 }
@@ -90,6 +98,11 @@ async function exists(filePath) {
   }
 }
 
+function normalizeComparablePath(value) {
+  if (!value) return '';
+  return path.normalize(String(value).replace(/^\\\\\?\\/, '')).toLowerCase();
+}
+
 function runSqliteQuery(sqlitePath, sql) {
   return new Promise((resolve, reject) => {
     execFile('sqlite3', ['-json', sqlitePath, sql], {
@@ -109,29 +122,154 @@ function runSqliteQuery(sqlitePath, sql) {
   });
 }
 
+function runPythonSqliteQuery(sqlitePath, sql) {
+  const script = [
+    'import json, os, sqlite3',
+    'con = sqlite3.connect("file:{}?mode=ro".format(os.environ["CODEX_USAGE_SQLITE_PATH"].replace("\\\\", "/")), uri=True)',
+    'con.row_factory = sqlite3.Row',
+    'rows = [dict(row) for row in con.execute(os.environ["CODEX_USAGE_SQL"]).fetchall()]',
+    'con.close()',
+    'print(json.dumps(rows, ensure_ascii=False))'
+  ].join('\n');
+
+  return new Promise((resolve, reject) => {
+    execFile('py', ['-3', '-c', script], {
+      windowsHide: true,
+      maxBuffer: 1024 * 512,
+      env: {
+        ...process.env,
+        CODEX_USAGE_SQLITE_PATH: sqlitePath,
+        CODEX_USAGE_SQL: sql
+      }
+    }, (error, stdout) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout || '[]'));
+      } catch (parseError) {
+        reject(parseError);
+      }
+    });
+  });
+}
+
+async function querySqlite(sqlitePath, sql) {
+  try {
+    return await runSqliteQuery(sqlitePath, sql);
+  } catch {
+    return runPythonSqliteQuery(sqlitePath, sql);
+  }
+}
+
+async function readLatestSessionIndexTask(codexHome, options = {}) {
+  const indexPath = path.join(codexHome, 'session_index.jsonl');
+  if (!(await exists(indexPath))) return null;
+
+  const content = await fs.readFile(indexPath, 'utf8');
+  let latest = null;
+  const projectCwd = normalizeComparablePath(options.projectCwd);
+
+  for (const line of content.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let row;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (projectCwd) {
+      const rowCwd = normalizeComparablePath(row.cwd || row.source_cwd);
+      if (rowCwd && rowCwd !== projectCwd) continue;
+    }
+
+    const updatedAt = row.updated_at || row.updatedAt || row.last_active_at || row.created_at || null;
+    if (!latest || String(updatedAt || '') > String(latest.updated_at || '')) {
+      latest = {
+        title: row.thread_name || row.title || row.display_title || row.id,
+        status: 'active',
+        updated_at: updatedAt
+      };
+    }
+  }
+
+  return latest ? normalizeTaskRow(latest) : null;
+}
+
+async function readSessionIndexTaskById(codexHome, threadId) {
+  if (!threadId) return null;
+  const indexPath = path.join(codexHome, 'session_index.jsonl');
+  if (!(await exists(indexPath))) return null;
+
+  const content = await fs.readFile(indexPath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let row;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    if (row.id !== threadId) continue;
+    return normalizeTaskRow({
+      title: row.thread_name || row.title || row.display_title || row.id,
+      status: 'active',
+      updated_at: row.updated_at || row.updatedAt || row.last_active_at || row.created_at || null
+    });
+  }
+
+  return null;
+}
+
+async function readSqliteTask(sqlitePath, options = {}) {
+  const tables = await querySqlite(sqlitePath, "SELECT name FROM sqlite_master WHERE type='table'");
+  const names = tables.map((row) => row.name);
+  const tableName = names.find((name) => name === 'threads')
+    || names.find((name) => /thread|task|session/i.test(name));
+  if (!tableName) return null;
+
+  const safeTable = tableName.replace(/"/g, '');
+  const rows = await querySqlite(sqlitePath, `SELECT * FROM "${safeTable}" ORDER BY updated_at DESC LIMIT 20`);
+  if (!rows.length) return null;
+  const projectCwd = normalizeComparablePath(options.projectCwd || process.env.CODEX_USAGE_PROJECT_CWD || process.cwd());
+  const row = rows.find((item) => normalizeComparablePath(item.cwd) === projectCwd) || rows[0];
+  const indexedTask = options.codexHome ? await readSessionIndexTaskById(options.codexHome, row.id) : null;
+  const indexedTitle = indexedTask?.title;
+  return normalizeTaskRow({
+    ...row,
+    title: indexedTitle || row.title,
+    status: row.status || (hasCompletionMarker(row) ? 'completed' : 'active')
+  });
+}
+
 async function readCurrentTask(options = {}) {
   const codexHome = options.codexHome || process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  const projectCwd = options.projectCwd || process.env.CODEX_USAGE_PROJECT_CWD || process.cwd();
   const sqlitePath = path.join(codexHome, 'state_5.sqlite');
-  if (!(await exists(sqlitePath))) {
-    return createUnavailableTask('state_5.sqlite not found');
+
+  if (await exists(sqlitePath)) {
+    try {
+      const sqliteTask = await readSqliteTask(sqlitePath, { codexHome, projectCwd });
+      if (sqliteTask) return sqliteTask;
+    } catch {
+      // Fall back to session_index.jsonl when sqlite3 is unavailable or the schema is unreadable.
+    }
   }
 
-  try {
-    const tables = await runSqliteQuery(sqlitePath, "SELECT name FROM sqlite_master WHERE type='table'");
-    const tableName = tables.map((row) => row.name).find((name) => /thread|task|session/i.test(name));
-    if (!tableName) return createUnavailableTask('未找到任务表');
+  const indexedTask = await readLatestSessionIndexTask(codexHome, { projectCwd })
+    || await readLatestSessionIndexTask(codexHome);
+  if (indexedTask) return indexedTask;
 
-    const safeTable = tableName.replace(/"/g, '');
-    const rows = await runSqliteQuery(sqlitePath, `SELECT * FROM "${safeTable}" ORDER BY updated_at DESC LIMIT 1`);
-    if (!rows.length) return createUnavailableTask('任务表为空');
-    return normalizeTaskRow(rows[0]);
-  } catch {
-    return createUnavailableTask('无法读取本机任务数据库');
-  }
+  return createUnavailableTask(await exists(sqlitePath) ? '无法读取本机任务数据库' : 'state_5.sqlite not found');
 }
 
 module.exports = {
   normalizeTaskRow,
   createUnavailableTask,
-  readCurrentTask
+  readCurrentTask,
+  readLatestSessionIndexTask,
+  readSessionIndexTaskById
 };

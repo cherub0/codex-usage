@@ -1,3 +1,5 @@
+const AUTO_REFRESH_MS = 5000;
+
 const elements = {
   capacity: document.getElementById('capacity-section'),
   tokens: document.getElementById('tokens-section'),
@@ -28,8 +30,8 @@ function formatTime(value) {
 }
 
 function windowLabel(id) {
-  if (id === '5h') return '5小时';
-  if (id === 'weekly') return '7天';
+  if (id === '5h') return '5 小时';
+  if (id === 'weekly') return '7 天';
   return '额度';
 }
 
@@ -155,4 +157,4 @@ async function refresh() {
 
 elements.refreshButton.addEventListener('click', refresh);
 refresh();
-setInterval(refresh, 5000);
+setInterval(refresh, AUTO_REFRESH_MS);

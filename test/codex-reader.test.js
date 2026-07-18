@@ -43,6 +43,57 @@ test('readLatestUsageSnapshot extracts latest rate limit snapshot', async () => 
   assert.equal(result.summary.tokenTotals.total, 120);
 });
 
+test('readLatestUsageSnapshot reads current event_msg usage payloads', async () => {
+  const root = await makeTempDir();
+  const sessionsDir = path.join(root, 'sessions', '2026', '07', '18');
+  await fs.mkdir(sessionsDir, { recursive: true });
+  const file = path.join(sessionsDir, 'rollout-current.jsonl');
+  await fs.writeFile(file, JSON.stringify({
+    type: 'event_msg',
+    timestamp: '2026-07-18T10:00:00.000Z',
+    payload: {
+      info: {
+        total_token_usage: {
+          input_tokens: 100,
+          cached_input_tokens: 40,
+          cache_write_input_tokens: 5,
+          output_tokens: 20,
+          reasoning_output_tokens: 3,
+          total_tokens: 120
+        }
+      },
+      rate_limits: {
+        limit_id: 'codex',
+        primary: {
+          used_percent: 7,
+          resets_at: 1784973986
+        },
+        credits: {
+          unlimited: false
+        }
+      }
+    }
+  }));
+
+  const result = await readLatestUsageSnapshot({
+    codexHome: root,
+    demoUsage: null,
+    lookbackDays: 30
+  });
+
+  assert.equal(result.mode, 'live');
+  assert.equal(result.windows.length, 1);
+  assert.equal(result.windows[0].id, '5h');
+  assert.equal(result.windows[0].usedPercent, 7);
+  assert.equal(result.windows[0].remainingPercent, 93);
+  assert.equal(result.windows[0].resetAt, new Date(1784973986 * 1000).toISOString());
+  assert.equal(result.summary.tokenTotals.input, 100);
+  assert.equal(result.summary.tokenTotals.cachedInput, 40);
+  assert.equal(result.summary.tokenTotals.cacheWriteInput, 5);
+  assert.equal(result.summary.tokenTotals.reasoningOutput, 3);
+  assert.equal(result.summary.tokenTotals.total, 120);
+});
+
 test('readLatestUsageSnapshot skips malformed lines and returns format_changed for unknown quota metadata', async () => {
   const root = await makeTempDir();
   const sessionsDir = path.join(root, 'sessions');

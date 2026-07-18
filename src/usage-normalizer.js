@@ -25,6 +25,14 @@ function pickFirst(raw, keys) {
   return null;
 }
 
+function normalizeResetAt(value) {
+  if (typeof value === 'string' && value.trim()) return value;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return null;
+  const milliseconds = number > 100000000000 ? number : number * 1000;
+  return new Date(milliseconds).toISOString();
+}
+
 function normalizeWindow(raw, fallbackId) {
   if (!raw || typeof raw !== 'object') return null;
   const id = normalizeWindowId(raw, fallbackId);
@@ -37,7 +45,7 @@ function normalizeWindow(raw, fallbackId) {
   if (usedPercent === null && remainingPercent !== null) usedPercent = 100 - remainingPercent;
   if (remainingPercent === null || usedPercent === null) return null;
 
-  const resetAt = pickFirst(raw, ['resetAt', 'reset_at', 'resets_at', 'resetTime']);
+  const resetAt = normalizeResetAt(pickFirst(raw, ['resetAt', 'reset_at', 'resets_at', 'resetTime']));
   const resetSecondsRaw = pickFirst(raw, ['resetSeconds', 'reset_seconds', 'resets_in_seconds', 'seconds_until_reset']);
   const resetSeconds = resetSecondsRaw === null ? null : Number(resetSecondsRaw);
 
@@ -46,7 +54,7 @@ function normalizeWindow(raw, fallbackId) {
     label: labelForWindow(id),
     remainingPercent,
     usedPercent,
-    resetAt: typeof resetAt === 'string' ? resetAt : null,
+    resetAt,
     resetSeconds: Number.isFinite(resetSeconds) ? resetSeconds : null,
     confidence: raw.confidence || 'live'
   };
