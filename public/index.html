@@ -4,10 +4,57 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Codex Usage Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    <main>
-      <h1>Codex Usage Dashboard</h1>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local Codex monitor</p>
+          <h1>Codex Usage Dashboard</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="status-pill" class="status-pill status-loading">Loading</span>
+          <span id="last-refresh" class="last-refresh">Waiting for first refresh</span>
+          <button id="refresh-button" class="refresh-button" type="button" aria-label="Refresh usage data">
+            <span aria-hidden="true">&#8635;</span>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <section class="hero-grid" aria-label="Usage dashboard">
+        <div class="quota-area">
+          <div id="quota-grid" class="quota-grid" aria-live="polite"></div>
+        </div>
+
+        <aside class="side-panel" aria-label="Data source">
+          <div class="panel-heading">
+            <span class="panel-kicker">Source</span>
+            <h2>Snapshot health</h2>
+          </div>
+          <div id="source-summary" class="source-summary"></div>
+        </aside>
+      </section>
+
+      <section class="detail-grid" aria-label="Usage details">
+        <article class="detail-panel">
+          <div class="panel-heading">
+            <span class="panel-kicker">Tokens</span>
+            <h2>Today and recent sessions</h2>
+          </div>
+          <div id="token-summary" class="token-summary"></div>
+        </article>
+
+        <article class="detail-panel">
+          <div class="panel-heading">
+            <span class="panel-kicker">Notes</span>
+            <h2>Warnings</h2>
+          </div>
+          <div id="warnings" class="warnings"></div>
+        </article>
+      </section>
     </main>
+    <script src="/app.js"></script>
   </body>
 </html>
