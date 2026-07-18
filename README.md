@@ -31,6 +31,14 @@ The Electron app watches for a local Codex process. When Codex is detected, it s
 npm run app:dev
 ```
 
+The floating window is frameless, always on top, and styled like a compact macOS widget. The interface is Chinese and intentionally shows only:
+
+- `容量`: 5-hour and weekly remaining capacity when local quota snapshots are available.
+- `Token 消耗`: total, input, cached input, and output token counters.
+- `当前任务`: the current or most recent local task state and progress when safe task metadata is available.
+
+The normal app mode uses local Windows process inspection. If a Codex process is detected, the window is shown. If Codex is not detected, the Electron process stays alive in the background and the window is hidden until Codex appears again.
+
 ## Configuration
 
 - `PORT`: server port, default `8787`
