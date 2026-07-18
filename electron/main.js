@@ -13,9 +13,9 @@ let monitorTimer = null;
 function createFloatingWindow() {
   const window = new BrowserWindow({
     width: 360,
-    height: 620,
+    height: 520,
     minWidth: 320,
-    minHeight: 560,
+    minHeight: 480,
     resizable: false,
     frame: false,
     transparent: true,
@@ -58,6 +58,25 @@ function createFloatingWindow() {
   return window;
 }
 
+function handleWindowControl(action) {
+  if (!mainWindow) return;
+  if (action === 'minimize') {
+    mainWindow.minimize();
+    return;
+  }
+  if (action === 'maximize') {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+    return;
+  }
+  if (action === 'close') {
+    app.quit();
+  }
+}
+
 async function updateWindowVisibility() {
   codexRunning = FORCE_SHOW || await isCodexRunning();
   if (!mainWindow) return;
@@ -72,6 +91,7 @@ async function updateWindowVisibility() {
 function registerIpcHandlers() {
   ipcMain.handle('codex-usage:get-snapshot', () => createDesktopSnapshot());
   ipcMain.handle('codex-usage:get-process-state', () => ({ codexRunning }));
+  ipcMain.handle('codex-usage:window-control', (_event, action) => handleWindowControl(action));
 }
 
 function startProcessMonitor() {

@@ -6,7 +6,8 @@ const elements = {
   task: document.getElementById('task-section'),
   processState: document.getElementById('process-state'),
   updatedAt: document.getElementById('updated-at'),
-  refreshButton: document.getElementById('refresh-button')
+  refreshButton: document.getElementById('refresh-button'),
+  windowControls: document.querySelectorAll('[data-window-action]')
 };
 
 function formatNumber(value) {
@@ -156,5 +157,10 @@ async function refresh() {
 }
 
 elements.refreshButton.addEventListener('click', refresh);
+for (const control of elements.windowControls) {
+  control.addEventListener('click', () => {
+    window.codexUsage?.controlWindow?.(control.dataset.windowAction);
+  });
+}
 refresh();
 setInterval(refresh, AUTO_REFRESH_MS);

@@ -11,6 +11,7 @@
     "app:dev": "cross-env CODEX_USAGE_FORCE_SHOW=1 electron .",
     "autostart:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-autostart.ps1",
     "autostart:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-autostart.ps1",
+    "dist": "electron-builder --win",
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
@@ -18,8 +19,31 @@
     "node": ">=18"
   },
   "license": "MIT",
+  "build": {
+    "productName": "CodexUsage",
+    "appId": "com.cherub.codexusage",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "src/**/*",
+      "sample-data/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false,
+      "artifactName": "${productName}-${version}-win.${ext}"
+    }
+  },
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "electron": "^31.7.7"
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
   }
 }
