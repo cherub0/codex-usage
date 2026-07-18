@@ -1,0 +1,40 @@
+{
+  "mode": "demo",
+  "generatedAt": "2026-07-18T00:00:00.000Z",
+  "message": "Demo mode: no readable Codex rate-limit snapshot was found.",
+  "windows": [
+    {
+      "id": "5h",
+      "label": "5-hour window",
+      "remainingPercent": 68,
+      "usedPercent": 32,
+      "resetAt": "2026-07-18T15:30:00.000Z",
+      "resetSeconds": null,
+      "confidence": "demo"
+    },
+    {
+      "id": "weekly",
+      "label": "Weekly window",
+      "remainingPercent": 41,
+      "usedPercent": 59,
+      "resetAt": "2026-07-21T02:00:00.000Z",
+      "resetSeconds": null,
+      "confidence": "demo"
+    }
+  ],
+  "summary": {
+    "source": "sample-data",
+    "latestSnapshotAt": null,
+    "scannedFiles": 0,
+    "skippedLines": 0,
+    "tokenTotals": {
+      "input": 128400,
+      "cachedInput": 84300,
+      "output": 21600,
+      "total": 150000
+    }
+  },
+  "warnings": [
+    "Connect Codex by using it at least once so local session logs contain quota snapshots."
+  ]
+}
