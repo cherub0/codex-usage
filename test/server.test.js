@@ -40,5 +40,8 @@ test('server serves index html', async () => {
   server.close();
 
   assert.equal(response.status, 200);
-  assert.match(text, /Codex Usage/i);
+  assert.match(text, /Codex 用量/);
+  assert.match(text, /aria-label="容量"/);
+  assert.match(text, /aria-label="Token 消耗"/);
+  assert.match(text, /aria-label="当前任务"/);
 });

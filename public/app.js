@@ -1,186 +1,158 @@
 const elements = {
-  statusPill: document.getElementById('status-pill'),
-  lastRefresh: document.getElementById('last-refresh'),
-  quotaGrid: document.getElementById('quota-grid'),
-  sourceSummary: document.getElementById('source-summary'),
-  tokenSummary: document.getElementById('token-summary'),
-  warnings: document.getElementById('warnings'),
+  capacity: document.getElementById('capacity-section'),
+  tokens: document.getElementById('tokens-section'),
+  task: document.getElementById('task-section'),
+  processState: document.getElementById('process-state'),
+  updatedAt: document.getElementById('updated-at'),
   refreshButton: document.getElementById('refresh-button')
 };
 
-const statusLabels = {
-  live: 'Live data',
-  partial: 'Partial data',
-  demo: 'Demo mode',
-  format_changed: 'Format changed'
-};
-
-async function fetchUsage() {
-  const response = await fetch('/api/usage', { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Usage API returned ${response.status}`);
-  }
-  return response.json();
+function formatNumber(value) {
+  return new Intl.NumberFormat('zh-CN').format(Number(value || 0));
 }
 
 function formatPercent(value) {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '--';
-  return `${Math.round(value)}%`;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '--';
+  return `${Math.round(number)}%`;
 }
 
-function formatNumber(value) {
-  const number = Number(value || 0);
-  return new Intl.NumberFormat().format(number);
-}
-
-function formatDateTime(value) {
-  if (!value) return 'Not available';
+function formatTime(value) {
+  if (!value) return '刚刚';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Not available';
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
+  if (Number.isNaN(date.getTime())) return '刚刚';
+  return new Intl.DateTimeFormat('zh-CN', {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
 }
 
-function formatReset(windowData) {
-  if (Number.isFinite(windowData.resetSeconds)) {
-    const totalMinutes = Math.max(0, Math.round(windowData.resetSeconds / 60));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+function windowLabel(id) {
+  if (id === '5h') return '5小时';
+  if (id === 'weekly') return '7天';
+  return '额度';
+}
+
+async function loadSnapshot() {
+  if (window.codexUsage?.getSnapshot) {
+    return window.codexUsage.getSnapshot();
   }
-  return formatDateTime(windowData.resetAt);
+
+  const response = await fetch('/api/usage', { cache: 'no-store' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const usage = await response.json();
+  return {
+    usage,
+    task: {
+      title: '浏览器预览模式',
+      status: '推断中',
+      progressPercent: 5,
+      confidence: '推断',
+      updatedAt: null,
+      message: 'Electron 模式会读取本机任务状态'
+    },
+    generatedAt: usage.generatedAt
+  };
 }
 
-function setStatus(mode) {
-  elements.statusPill.className = `status-pill status-${mode || 'loading'}`;
-  elements.statusPill.textContent = statusLabels[mode] || 'Loading';
+async function loadProcessState() {
+  if (window.codexUsage?.getProcessState) {
+    return window.codexUsage.getProcessState();
+  }
+  return { codexRunning: true };
 }
 
-function renderWindowCard(windowData) {
-  const remaining = Math.max(0, Math.min(100, Number(windowData.remainingPercent || 0)));
-  const card = document.createElement('article');
-  card.className = `quota-card quota-${windowData.confidence || 'live'}`;
-  card.innerHTML = `
-    <div class="quota-card-head">
-      <div>
-        <span class="panel-kicker">${windowData.id === '5h' ? 'Active' : 'Rolling'}</span>
-        <h2>${windowData.label}</h2>
-      </div>
-      <span class="confidence">${windowData.confidence || 'live'}</span>
-    </div>
-    <div class="ring-wrap">
-      <div class="quota-ring" style="--value: ${remaining}">
-        <div class="ring-core">
-          <strong>${formatPercent(remaining)}</strong>
-          <span>remaining</span>
+function renderCapacity(usage) {
+  const windows = Array.isArray(usage.windows) ? usage.windows.slice(0, 2) : [];
+  const content = windows.length ? windows.map((item) => {
+    const remaining = Math.max(0, Math.min(100, Number(item.remainingPercent || 0)));
+    return `
+      <div class="capacity-item">
+        <div class="ring" style="--value:${remaining}">
+          <span>${formatPercent(remaining)}</span>
+        </div>
+        <div class="capacity-copy">
+          <strong>${windowLabel(item.id)}</strong>
+          <span>剩余容量</span>
+          <em>${item.confidence === 'demo' ? '演示' : '真实'}</em>
         </div>
       </div>
+    `;
+  }).join('') : '<p class="empty-text">暂无真实容量</p>';
+
+  elements.capacity.innerHTML = `
+    <div class="section-head">
+      <h2>容量</h2>
+      <span>${usage.mode === 'demo' ? '演示' : '实时'}</span>
     </div>
-    <div class="quota-metrics">
-      <div>
-        <span>Used</span>
-        <strong>${formatPercent(windowData.usedPercent)}</strong>
-      </div>
-      <div>
-        <span>Reset</span>
-        <strong>${formatReset(windowData)}</strong>
-      </div>
+    <div class="capacity-grid">${content}</div>
+  `;
+}
+
+function renderTokens(usage) {
+  const totals = usage.summary?.tokenTotals || {};
+  elements.tokens.innerHTML = `
+    <div class="section-head">
+      <h2>Token 消耗</h2>
+      <span>本机统计</span>
+    </div>
+    <div class="token-total">
+      <span>总计</span>
+      <strong>${formatNumber(totals.total)}</strong>
+    </div>
+    <div class="metric-grid">
+      <div><span>输入</span><strong>${formatNumber(totals.input)}</strong></div>
+      <div><span>缓存</span><strong>${formatNumber(totals.cachedInput)}</strong></div>
+      <div><span>输出</span><strong>${formatNumber(totals.output)}</strong></div>
     </div>
   `;
-  return card;
 }
 
-function renderQuotaGrid(data) {
-  elements.quotaGrid.replaceChildren();
-  if (!Array.isArray(data.windows) || data.windows.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.textContent = data.message || 'No quota windows are available yet.';
-    elements.quotaGrid.append(empty);
-    return;
-  }
-  for (const windowData of data.windows) {
-    elements.quotaGrid.append(renderWindowCard(windowData));
-  }
-}
-
-function renderSource(data) {
-  const summary = data.summary || {};
-  elements.sourceSummary.innerHTML = `
-    <dl>
-      <div><dt>Mode</dt><dd>${statusLabels[data.mode] || data.mode || 'Unknown'}</dd></div>
-      <div><dt>Source</dt><dd>${summary.source || 'Unknown'}</dd></div>
-      <div><dt>Latest snapshot</dt><dd>${formatDateTime(summary.latestSnapshotAt)}</dd></div>
-      <div><dt>Scanned files</dt><dd>${formatNumber(summary.scannedFiles)}</dd></div>
-      <div><dt>Skipped lines</dt><dd>${formatNumber(summary.skippedLines)}</dd></div>
-    </dl>
-    <p class="source-message">${data.message || ''}</p>
+function renderTask(task) {
+  const progress = Math.max(0, Math.min(100, Number(task.progressPercent || 0)));
+  elements.task.innerHTML = `
+    <div class="section-head">
+      <h2>当前任务</h2>
+      <span>${task.confidence || '暂无'}</span>
+    </div>
+    <div class="task-title">${task.title || '暂无任务数据'}</div>
+    <div class="task-row">
+      <span>${task.status || '暂无'}</span>
+      <strong>${formatPercent(progress)}</strong>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:${progress}%"></div>
+    </div>
+    <p class="task-message">${task.message || '等待本机 Codex 状态更新'}</p>
   `;
 }
 
-function renderTokens(data) {
-  const totals = data.summary?.tokenTotals || {};
-  elements.tokenSummary.innerHTML = `
-    <div class="token-row"><span>Total</span><strong>${formatNumber(totals.total)}</strong></div>
-    <div class="token-row"><span>Input</span><strong>${formatNumber(totals.input)}</strong></div>
-    <div class="token-row"><span>Cached input</span><strong>${formatNumber(totals.cachedInput)}</strong></div>
-    <div class="token-row"><span>Output</span><strong>${formatNumber(totals.output)}</strong></div>
-  `;
-}
-
-function renderWarnings(data) {
-  elements.warnings.replaceChildren();
-  const warnings = Array.isArray(data.warnings) ? data.warnings : [];
-  if (warnings.length === 0) {
-    const quiet = document.createElement('p');
-    quiet.className = 'quiet-note';
-    quiet.textContent = 'No warnings. Local data is being read without exposing transcript content.';
-    elements.warnings.append(quiet);
-    return;
-  }
-  for (const warning of warnings) {
-    const item = document.createElement('p');
-    item.className = 'warning-item';
-    item.textContent = warning;
-    elements.warnings.append(item);
-  }
-}
-
-function renderUsage(data) {
-  setStatus(data.mode);
-  elements.lastRefresh.textContent = `Updated ${formatDateTime(data.generatedAt)}`;
-  renderQuotaGrid(data);
-  renderSource(data);
-  renderTokens(data);
-  renderWarnings(data);
-}
-
-function renderError(error) {
-  setStatus('format_changed');
-  elements.lastRefresh.textContent = 'Refresh failed';
-  elements.quotaGrid.innerHTML = `<div class="empty-state">The dashboard could not load usage data.</div>`;
-  elements.sourceSummary.innerHTML = `<p class="source-message">${error.message}</p>`;
-  elements.tokenSummary.innerHTML = '';
-  elements.warnings.innerHTML = `<p class="warning-item">Check that the local server is still running.</p>`;
+function renderProcessState(state) {
+  elements.processState.textContent = state.codexRunning ? 'Codex 运行中' : '等待 Codex';
 }
 
 async function refresh() {
   elements.refreshButton.disabled = true;
-  elements.refreshButton.classList.add('is-loading');
   try {
-    renderUsage(await fetchUsage());
+    const [snapshot, processState] = await Promise.all([
+      loadSnapshot(),
+      loadProcessState()
+    ]);
+    renderCapacity(snapshot.usage || {});
+    renderTokens(snapshot.usage || {});
+    renderTask(snapshot.task || {});
+    renderProcessState(processState);
+    elements.updatedAt.textContent = `更新 ${formatTime(snapshot.generatedAt)}`;
   } catch (error) {
-    renderError(error);
+    elements.capacity.innerHTML = '<h2>容量</h2><p class="empty-text">读取失败</p>';
+    elements.tokens.innerHTML = '<h2>Token 消耗</h2><p class="empty-text">读取失败</p>';
+    elements.task.innerHTML = `<h2>当前任务</h2><p class="empty-text">${error.message}</p>`;
+    elements.processState.textContent = '状态异常';
   } finally {
     elements.refreshButton.disabled = false;
-    elements.refreshButton.classList.remove('is-loading');
   }
 }
 
 elements.refreshButton.addEventListener('click', refresh);
 refresh();
+setInterval(refresh, 5000);
