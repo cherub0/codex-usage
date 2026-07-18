@@ -26,6 +26,8 @@ test('package can build a Windows exe artifact', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 
   assert.equal(pkg.scripts.dist, 'electron-builder --win');
-  assert.equal(pkg.build.win.target[0], 'portable');
-  assert.equal(pkg.build.win.artifactName, '${productName}-${version}-win.${ext}');
+  assert.deepEqual(pkg.build.win.target, ['nsis']);
+  assert.equal(pkg.build.win.artifactName, '${productName}-Setup-${version}-win.${ext}');
+  assert.equal(pkg.build.nsis.createDesktopShortcut, true);
+  assert.equal(pkg.build.nsis.createStartMenuShortcut, true);
 });

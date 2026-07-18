@@ -10,7 +10,7 @@
 - 每 5 秒自动刷新一次数据。
 - 支持伴随 Codex 启动显示：检测到 Codex 运行时显示窗口，否则后台隐藏。
 - 支持 Windows 开机自启。
-- 支持打包为 Windows portable exe。
+- 支持打包为 Windows 安装版 exe，安装时创建快捷方式。
 
 ## 下载使用
 
@@ -19,6 +19,10 @@
 [下载 CodexUsage-0.1.0-win.exe](https://github.com/cherub0/codex-usage/releases/download/v0.1.0/CodexUsage-0.1.0-win.exe)
 
 这是未签名的便携版 exe。Windows 第一次运行时可能会提示安全警告，选择“更多信息”，再选择“仍要运行”即可。
+
+如果需要自动创建桌面快捷方式和开始菜单快捷方式，请下载安装版：
+
+[下载 CodexUsage-Setup-0.1.0-win.exe](https://github.com/cherub0/codex-usage/releases/download/v0.1.0/CodexUsage-Setup-0.1.0-win.exe)
 
 ## 本地运行
 
@@ -73,7 +77,7 @@ http://127.0.0.1:8787
 
 ## 打包 exe
 
-生成 Windows portable exe：
+生成 Windows 安装版 exe：
 
 ```powershell
 npm run dist
@@ -82,10 +86,10 @@ npm run dist
 构建产物会输出到：
 
 ```text
-dist\CodexUsage-0.1.0-win.exe
+dist\CodexUsage-Setup-0.1.0-win.exe
 ```
 
-打包使用 `electron-builder`，当前配置会生成未签名的 portable exe，并关闭签名编辑步骤，避免普通 Windows 用户权限下的符号链接问题。
+打包使用 `electron-builder`，当前配置会生成安装版，并关闭签名编辑步骤，避免普通 Windows 用户权限下的符号链接问题。
 
 ## 数据来源
 

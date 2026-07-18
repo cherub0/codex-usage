@@ -35,10 +35,17 @@
     ],
     "win": {
       "target": [
-        "portable"
+        "nsis"
       ],
       "signAndEditExecutable": false,
-      "artifactName": "${productName}-${version}-win.${ext}"
+      "artifactName": "${productName}-Setup-${version}-win.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Codex Usage"
     }
   },
   "devDependencies": {
