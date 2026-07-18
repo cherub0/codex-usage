@@ -9,6 +9,7 @@ const CHECK_INTERVAL_MS = 3000;
 let mainWindow = null;
 let codexRunning = false;
 let monitorTimer = null;
+let userMinimized = false;
 
 function createFloatingWindow() {
   const window = new BrowserWindow({
@@ -32,6 +33,12 @@ function createFloatingWindow() {
   });
 
   window.setAlwaysOnTop(true, 'screen-saver');
+  window.on('restore', () => {
+    userMinimized = false;
+  });
+  window.on('show', () => {
+    if (!window.isMinimized()) userMinimized = false;
+  });
   window.webContents.on('did-finish-load', async () => {
     if (process.env.CODEX_USAGE_DEBUG_LOAD === '1') {
       const text = await window.webContents.executeJavaScript('new Promise((resolve) => setTimeout(() => resolve(document.body.innerText), 1500))');
@@ -61,10 +68,12 @@ function createFloatingWindow() {
 function handleWindowControl(action) {
   if (!mainWindow) return;
   if (action === 'minimize') {
+    userMinimized = true;
     mainWindow.minimize();
     return;
   }
   if (action === 'maximize') {
+    userMinimized = false;
     if (mainWindow.isMaximized()) {
       mainWindow.unmaximize();
     } else {
@@ -82,8 +91,9 @@ async function updateWindowVisibility() {
   if (!mainWindow) return;
 
   if (codexRunning) {
-    if (!mainWindow.isVisible()) mainWindow.show();
+    if (!mainWindow.isVisible() && !userMinimized) mainWindow.show();
   } else if (mainWindow.isVisible()) {
+    userMinimized = false;
     mainWindow.hide();
   }
 }

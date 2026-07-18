@@ -22,6 +22,15 @@ test('Electron main process handles mac traffic light controls', () => {
   assert.match(preload, /controlWindow/);
 });
 
+test('Electron monitor does not reopen a window minimized by the user', () => {
+  const main = fs.readFileSync(path.join(__dirname, '..', 'electron', 'main.js'), 'utf8');
+
+  assert.match(main, /let userMinimized = false/);
+  assert.match(main, /userMinimized = true/);
+  assert.match(main, /if \(!mainWindow\.isVisible\(\) && !userMinimized\) mainWindow\.show\(\)/);
+  assert.match(main, /window\.on\('restore'/);
+});
+
 test('package can build a Windows exe artifact', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 
