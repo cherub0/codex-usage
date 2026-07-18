@@ -13,9 +13,9 @@ let monitorTimer = null;
 function createFloatingWindow() {
   const window = new BrowserWindow({
     width: 360,
-    height: 520,
+    height: 500,
     minWidth: 320,
-    minHeight: 480,
+    minHeight: 460,
     resizable: false,
     frame: false,
     transparent: true,

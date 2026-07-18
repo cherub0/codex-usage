@@ -6,8 +6,8 @@ const path = require('node:path');
 test('Electron window is cropped to the footer height', () => {
   const main = fs.readFileSync(path.join(__dirname, '..', 'electron', 'main.js'), 'utf8');
 
-  assert.match(main, /height:\s*520/);
-  assert.match(main, /minHeight:\s*480/);
+  assert.match(main, /height:\s*500/);
+  assert.match(main, /minHeight:\s*460/);
 });
 
 test('Electron main process handles mac traffic light controls', () => {
