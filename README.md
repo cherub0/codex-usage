@@ -18,6 +18,19 @@ npm start
 
 Open `http://127.0.0.1:8787`.
 
+## Windows Floating Window
+
+```powershell
+npm install
+npm run app
+```
+
+The Electron app watches for a local Codex process. When Codex is detected, it shows an always-on-top Chinese floating window. For development without a running Codex process:
+
+```powershell
+npm run app:dev
+```
+
 ## Configuration
 
 - `PORT`: server port, default `8787`

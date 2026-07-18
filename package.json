@@ -4,13 +4,20 @@
   "description": "Local-first Codex remaining usage dashboard.",
   "private": true,
   "type": "commonjs",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
+    "app": "electron .",
+    "app:dev": "cross-env CODEX_USAGE_FORCE_SHOW=1 electron .",
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.7"
+  }
 }

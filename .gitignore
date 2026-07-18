@@ -5,5 +5,8 @@ npm-debug.log*
 coverage/
 .nyc_output/
 dist/
+out/
+release/
+*.asar
 *.log
 codex_*_report_*
